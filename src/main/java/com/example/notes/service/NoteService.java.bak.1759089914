@@ -1,0 +1,64 @@
+package com.example.notes.service;
+
+import com.example.notes.dto.NoteDto;
+import com.example.notes.entity.Note;
+import com.example.notes.repository.NoteRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import javax.transaction.Transactional;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class NoteService {
+    private final NoteRepository noteRepository;
+
+    public List<NoteDto> getByDate(LocalDate date) {
+        return noteRepository.findAllByDateOrderByIndexInDayAsc(date)
+                .stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public NoteDto create(NoteDto req) {
+        LocalDate d = req.getDate();
+        int nextIdx = (int) noteRepository.countByDate(d) + 1;
+        Note saved = noteRepository.save(Note.builder()
+                .date(d)
+                .content(req.getContent())
+                .indexInDay(nextIdx)
+                .build());
+        return toDto(saved);
+    }
+
+    @Transactional
+    public NoteDto update(Long id, NoteDto req) {
+        Note n = noteRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("note not found: " + id));
+        // Разрешим менять дату/контент. Индекс оставим как есть.
+        n.setDate(req.getDate() != null ? req.getDate() : n.getDate());
+        n.setContent(req.getContent() != null ? req.getContent() : n.getContent());
+        return toDto(noteRepository.save(n));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        noteRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void deleteDay(LocalDate date) {
+        noteRepository.deleteByDate(date);
+    }
+
+    private NoteDto toDto(Note note) {
+        return NoteDto.builder()
+                .id(note.getId())
+                .date(note.getDate())
+                .content(note.getContent())
+                .indexInDay(note.getIndexInDay())
+                .build();
+    }
+}

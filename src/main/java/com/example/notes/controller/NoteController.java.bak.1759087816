@@ -1,0 +1,98 @@
+package com.example.notes.controller;
+
+import com.example.notes.dto.NoteDto;
+import com.example.notes.entity.Note;
+import com.example.notes.repository.NoteRepository;
+import com.example.notes.service.NoteService;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.OutputStream;
+import java.time.LocalDate;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/notes")
+public class NoteController {
+
+    private final NoteService noteService;
+    private final NoteRepository noteRepository;
+
+    public NoteController(NoteService noteService, NoteRepository noteRepository) {
+        this.noteService = noteService;
+        this.noteRepository = noteRepository;
+    }
+
+    // GET /api/v1/notes?date=YYYY-MM-DD
+    @GetMapping(params = "date")
+    public Object getByDate(@RequestParam("date")
+                            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        // тип ответа у сервиса может быть своим DTO; Object не ломает компиляцию
+        return noteService.getByDate(date).stream()
+        .map(NoteDto::from)
+        .collect(java.util.stream.Collectors.toList());
+    }
+
+    // POST /api/v1/notes
+    @PostMapping
+    public NoteDto create(@RequestBody Note note) {
+        return NoteDto.from(noteService.create(note));
+    }
+
+    // PUT /api/v1/notes/{id}
+    @PutMapping("/{id}")
+    public NoteDto update(@PathVariable("id") Long id, @RequestBody Note note) {
+        return NoteDto.from(noteService.update(id, note));
+    }
+
+    // DELETE /api/v1/notes?date=YYYY-MM-DD  — очистить весь день
+    @DeleteMapping(params = "date")
+    public ResponseEntity<Void> deleteDay(@RequestParam("date")
+                                          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        noteService.deleteDay(date);
+        return ResponseEntity.noContent().build();
+    }
+
+    // GET /api/v1/notes/export?from=YYYY-MM-DD&to=YYYY-MM-DD  — Excel (XLSX)
+    @GetMapping("/export")
+    public void exportXlsx(@RequestParam("from")
+                           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                           @RequestParam("to")
+                           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                           HttpServletResponse response) throws Exception {
+
+        List<Note> all = noteRepository
+                .findAllByDateBetweenOrderByDateAscIndexInDayAsc(from, to);
+
+        // генерим XLSX
+        org.apache.poi.xssf.usermodel.XSSFWorkbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+        org.apache.poi.ss.usermodel.Sheet sh = wb.createSheet("Notes");
+
+        int r = 0;
+        org.apache.poi.ss.usermodel.Row header = sh.createRow(r++);
+        header.createCell(0).setCellValue("ID");
+        header.createCell(1).setCellValue("Date");
+        header.createCell(2).setCellValue("IndexInDay");
+        header.createCell(3).setCellValue("Content");
+
+        for (Note n : all) {
+            org.apache.poi.ss.usermodel.Row row = sh.createRow(r++);
+            row.createCell(0).setCellValue(n.getId());
+            row.createCell(1).setCellValue(n.getDate().toString());
+            row.createCell(2).setCellValue(n.getIndexInDay());
+            row.createCell(3).setCellValue(n.getContent());
+        }
+        for (int c = 0; c < 4; c++) sh.autoSizeColumn(c);
+
+        String fname = String.format("notes_%s_%s.xlsx", from, to);
+        response.setHeader("Content-Disposition", "attachment; filename=" + fname);
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+        try (OutputStream os = response.getOutputStream()) {
+            wb.write(os);
+        }
+        wb.close();
+    }
+}
