@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="10.17.0">
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/dto/NotesForDayResponse.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/dto/NoteDto.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/repository/NoteRepository.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/config/GlobalExceptionHandler.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/NotesCalendarApplication.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/entity/Note.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/web/HomeController.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/controller/NoteController.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/controller/ExportController.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/controller/ApiExceptionHandler.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/service/HolidayService.java">
+</file>
+<file name="/Users/m.reztsov/Desktop/Reztsov_MR_IKB-41/notes-calendar/src/main/java/com/example/notes/service/NoteService.java">
+</file>
+</checkstyle>

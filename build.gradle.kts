@@ -11,9 +11,9 @@ group = "com.example"
 version = "1.0.0"
 
 java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
-    }
+    toolchain { languageVersion.set(JavaLanguageVersion.of(17)) }
+    withSourcesJar()
+    withJavadocJar()
 }
 
 repositories {
@@ -35,10 +35,16 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("com.h2database:h2")
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    testLogging {
+        events("FAILED", "SKIPPED", "PASSED")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStandardStreams = true
+    }
 }
 
 jacoco {
@@ -50,11 +56,38 @@ tasks.jacocoTestReport {
     reports {
         xml.required.set(true)
         html.required.set(true)
+        csv.required.set(false)
     }
 }
 
+tasks.register("jacocoCoverageVerification", JacocoCoverageVerification::class) {
+    dependsOn(tasks.jacocoTestReport)
+    violationRules {
+        rule {
+            limit {
+                // невысокий порог, чтобы сборка не падала (можно поднять позже)
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = "0.10".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn("spotlessCheck", "checkstyleMain", "checkstyleTest", "jacocoCoverageVerification")
+}
+
 tasks.bootJar {
-    archiveFileName.set("notes-calendar-1.0.0.jar")
+    archiveFileName.set("notes-calendar-${project.version}.jar")
+}
+
+tasks.javadoc {
+    val opt = (options as org.gradle.external.javadoc.StandardJavadocDocletOptions)
+    opt.encoding = "UTF-8"
+    opt.charSet = "UTF-8"
+    opt.addStringOption("Xdoclint:none", "-quiet")
+    opt.links("https://docs.oracle.com/javase/8/docs/api/")
 }
 
 spotless {
@@ -70,8 +103,4 @@ checkstyle {
     toolVersion = "10.17.0"
     configFile = file("config/checkstyle/checkstyle.xml")
     isIgnoreFailures = false
-}
-
-tasks.check {
-    dependsOn("spotlessCheck", "checkstyleMain", "checkstyleTest")
 }
