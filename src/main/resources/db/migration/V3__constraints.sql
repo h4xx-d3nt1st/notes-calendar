@@ -1,10 +1,11 @@
--- индекс + уникальность заметки в пределах дня
-ALTER TABLE public.notes
-  ALTER COLUMN date SET NOT NULL,
-  ALTER COLUMN content SET NOT NULL,
-  ALTER COLUMN index_in_day SET NOT NULL;
+-- индекс + уникальность заметки в пределах дня (H2/PostgreSQL friendly)
 
--- предельная длина контента уже введена в V2 (<=500)
--- гарантируем уникальность позиции в дне
-CREATE UNIQUE INDEX IF NOT EXISTS ux_notes_date_idx
-    ON public.notes(date, index_in_day);
+-- NOT NULL по отдельности (H2 не понимает через запятую)
+ALTER TABLE notes ALTER COLUMN date SET NOT NULL;
+ALTER TABLE notes ALTER COLUMN content SET NOT NULL;
+ALTER TABLE notes ALTER COLUMN index_in_day SET NOT NULL;
+
+-- Уникальность пары (date, index_in_day)
+-- Вариант через constraint (подходит и для H2, и для Postgres)
+ALTER TABLE notes
+  ADD CONSTRAINT uq_notes_date_index UNIQUE (date, index_in_day);
