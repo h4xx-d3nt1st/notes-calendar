@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.example.notes.NoteServiceTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2025-09-30T20:13:22" hostname="MacBook-Pro-Michael.local" time="0.069">
-  <properties/>
-  <testcase name="createAssignsIndexInDay()" classname="com.example.notes.NoteServiceTest" time="0.069"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

@@ -1,0 +1,7 @@
+# Не учитываем генерируемые html/xml в статистике
+*.html linguist-vendored
+*.xml  linguist-vendored
+
+# Документацию помечаем как документацию
+*.md   linguist-documentation
+*.xlsx linguist-documentation
