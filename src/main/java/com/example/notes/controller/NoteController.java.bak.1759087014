@@ -1,0 +1,114 @@
+package com.example.notes.controller;
+
+import com.example.notes.dto.NoteDto;
+import com.example.notes.service.NoteService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.transaction.Transactional;
+import java.time.LocalDate;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/notes")
+@RequiredArgsConstructor
+public class NoteController {
+
+    private final NoteService noteService;
+
+    // GET /api/v1/notes?date=YYYY-MM-DD
+    @GetMapping
+    public DayResponse getByDate(@RequestParam("date")
+                                 @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        List<NoteDto> notes = noteService.getByDate(date);
+        // Праздники пока заглушим
+        return new DayResponse(date, false, null, notes);
+    }
+
+    // POST /api/v1/notes  { "date":"YYYY-MM-DD", "content":"..." }
+    @PostMapping
+    public NoteDto create(@RequestBody NoteDto req) {
+        return noteService.create(req);
+    }
+
+    // PUT /api/v1/notes/{id}
+    @PutMapping("/{id}")
+    public NoteDto update(@PathVariable Long id, @RequestBody NoteDto req) {
+        return noteService.update(id, req);
+    }
+
+    // DELETE /api/v1/notes/{id}
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        noteService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // DELETE /api/v1/notes?date=YYYY-MM-DD  (очистить день)
+    @DeleteMapping(params = "date")
+    @Transactional
+    public ResponseEntity<Void> deleteDay(@RequestParam("date")
+                                          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        noteService.deleteDay(date);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Ответ для GET по дню
+    public static class DayResponse {
+        public LocalDate date;
+        public boolean holiday;
+        public String holidayName;
+        public List<NoteDto> notes;
+
+        public DayResponse(LocalDate date, boolean holiday, String holidayName, List<NoteDto> notes) {
+            this.date = date;
+            this.holiday = holiday;
+            this.holidayName = holidayName;
+            this.notes = notes;
+        }
+    }
+}
+
+    @GetMapping(value = "/export", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    public void exportToExcel(
+            @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam("to")   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            javax.servlet.http.HttpServletResponse response) throws java.io.IOException {
+
+        // собираем все заметки по датам
+        java.util.List<com.example.notes.entity.Note> all = new java.util.ArrayList<>();
+        LocalDate d = from;
+        while (!d.isAfter(to)) {
+            all.addAll(noteService.listByDate(d)); // метод listByDate(date) уже есть
+            d = d.plusDays(1);
+        }
+
+        // генерим XLSX
+        org.apache.poi.xssf.usermodel.XSSFWorkbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+        org.apache.poi.ss.usermodel.Sheet sh = wb.createSheet("Notes");
+        int r = 0;
+        // заголовок
+        org.apache.poi.ss.usermodel.Row header = sh.createRow(r++);
+        header.createCell(0).setCellValue("ID");
+        header.createCell(1).setCellValue("Date");
+        header.createCell(2).setCellValue("IndexInDay");
+        header.createCell(3).setCellValue("Content");
+
+        for (com.example.notes.entity.Note n : all) {
+            org.apache.poi.ss.usermodel.Row row = sh.createRow(r++);
+            row.createCell(0).setCellValue(n.getId());
+            row.createCell(1).setCellValue(n.getDate().toString());
+            row.createCell(2).setCellValue(n.getIndexInDay());
+            row.createCell(3).setCellValue(n.getContent());
+        }
+        for (int c = 0; c < 4; c++) sh.autoSizeColumn(c);
+
+        String fname = String.format("notes_%s_%s.xlsx", from, to);
+        response.setHeader("Content-Disposition", "attachment; filename=" + fname);
+        try (java.io.OutputStream os = response.getOutputStream()) {
+            wb.write(os);
+        }
+        wb.close();
+    }

@@ -1,0 +1,60 @@
+package com.example.notes.controller;
+
+import com.example.notes.dto.NoteDto;
+import com.example.notes.service.NoteService;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.transaction.Transactional;
+import java.time.LocalDate;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/notes")
+public class NoteController {
+
+    private final NoteService noteService;
+
+    public NoteController(NoteService noteService) {
+        this.noteService = noteService;
+    }
+
+    // Список заметок за день
+    @GetMapping(params = "date")
+    public List<NoteDto> getByDate(
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        // сервис уже возвращает List<NoteDto>
+        return noteService.getByDate(date);
+    }
+
+    // Создать заметку
+    @PostMapping
+    @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public NoteDto create(@RequestBody NoteDto req) {
+        // сервис вернёт Entity -> оборачиваем в DTO
+        return NoteDto.from(noteService.create(req.getDate(), req.getContent()));
+    }
+
+    // Обновить заметку
+    @PutMapping("/{id}")
+    public NoteDto update(@PathVariable Long id, @RequestBody NoteDto req) {
+        return NoteDto.from(noteService.update(id, req.getDate(), req.getContent()));
+    }
+
+    // Удалить одну заметку
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        noteService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Очистить весь день
+    @DeleteMapping(params = "date")
+    @Transactional
+    public ResponseEntity<Void> deleteDay(
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        noteService.deleteDay(date);
+        return ResponseEntity.noContent().build();
+    }
+}

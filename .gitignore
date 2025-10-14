@@ -1,0 +1,27 @@
+# === Build & Gradle ===
+/build/
+.gradle/
+out/
+
+# Оставляем в репо gradle wrapper .jar
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# === Артефакты ===
+*.jar
+*.war
+*.log
+/logs/
+
+# === IDE ===
+.idea/
+*.iml
+.vscode/
+
+# === OS ===
+.DS_Store
+
+# === Разное ===
+backup_*/
+*.bak
+*.CURRENT_BACKUP.sql
