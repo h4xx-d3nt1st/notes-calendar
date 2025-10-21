@@ -17,33 +17,46 @@ java {
 }
 
 repositories {
+    mavenLocal()   // <— нужно, чтобы подтянуть com.github.h4xx-d3nt1st:isdayoff:0.1.0 из ~/.m2
     mavenCentral()
 }
 
 dependencies {
-// Actuator (метрики и health-check)
-    implementation("org.springframework.boot:spring-boot-starter-actuator")
-
-// Micrometer (собирать метрики, в т.ч. для Prometheus)
-    implementation("io.micrometer:micrometer-registry-prometheus")
-
-// Swagger / OpenAPI (автогенерация документации)
-    implementation("org.springdoc:springdoc-openapi-ui:1.7.0")
+    // Web + валидация + JPA
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
+
+    // Логи: Log4j2 вместо default logging
+    implementation("org.springframework.boot:spring-boot-starter-log4j2")
+
+    // Actuator + Prometheus
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
+
+    // OpenAPI/Swagger
     implementation("org.springdoc:springdoc-openapi-ui:1.7.0")
+
+    // Миграции, Excel
     implementation("org.flywaydb:flyway-core")
     implementation("org.apache.poi:poi-ooxml:5.2.5")
 
+    // IsDayOff (твоя локально опубликованная либа)
+    implementation("com.github.h4xx-d3nt1st:isdayoff:0.1.0")
+
+    // Lombok
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")
 
+    // DB
     runtimeOnly("org.postgresql:postgresql")
-
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("com.h2database:h2")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+}
+
+configurations.all {
+    // отключаем default logging, т.к. используем log4j2
+    exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
 }
 
 tasks.withType<Test> {
@@ -55,9 +68,7 @@ tasks.withType<Test> {
     }
 }
 
-jacoco {
-    toolVersion = "0.8.11"
-}
+jacoco { toolVersion = "0.8.11" }
 
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
@@ -73,7 +84,6 @@ tasks.register("jacocoCoverageVerification", JacocoCoverageVerification::class) 
     violationRules {
         rule {
             limit {
-                // невысокий порог, чтобы сборка не падала (можно поднять позже)
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
                 minimum = "0.10".toBigDecimal()
@@ -113,17 +123,12 @@ checkstyle {
     isIgnoreFailures = false
 }
 
-configurations.all {
-    exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
-}
 
-dependencies {
-    // Логирование через Log4j2
-    implementation("org.springframework.boot:spring-boot-starter-log4j2")
-}
-
-/* --- Observability deps (Actuator + Prometheus) --- */
-dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-actuator")
-    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
+/** Make Javadoc robust when offline */
+tasks.javadoc {
+    val opt = (options as org.gradle.external.javadoc.StandardJavadocDocletOptions)
+    // не пытаться ходить на внешние сайты
+    opt.links?.clear()
+    // и не падать, если что-то не так с сетью
+    isFailOnError = false
 }

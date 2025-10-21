@@ -2,61 +2,85 @@ package com.example.notes.service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-@Log4j2
+/** Сервис для определения праздничных и выходных дней. */
 @Service
-@RequiredArgsConstructor
 public class HolidayService {
 
-  private final RestTemplate restTemplate;
+  private final RestTemplate restTemplate = new RestTemplate();
 
-  @Value("${isdayoff.base-url:https://isdayoff.ru}")
-  private String baseUrl;
-
-  private static final DateTimeFormatter API_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
-
-  public HolidayInfo getHolidayInfo(LocalDate date) {
-    String ymd = date.format(API_FMT);
-    // cc=ru — Россия; pre=1 — учитывать предпраздничные; covid=1 — спец-коды ковидных периодов
-    String url = String.format("%s/api/getdata?date=%s&cc=ru&pre=1&covid=1", baseUrl, ymd);
-
+  /**
+   * Основной метод c указанием страны (cc). Использует формат API
+   * https://isdayoff.ru/YYYY-MM-DD?cc=XX
+   */
+  public HolidayInfo getHolidayInfo(LocalDate date, String countryCode) {
+    if (countryCode == null || countryCode.isBlank()) {
+      countryCode = "ru";
+    }
     try {
-      ResponseEntity<String> resp = restTemplate.getForEntity(url, String.class);
-      String body = resp.getBody() == null ? "" : resp.getBody().trim();
-      char code = body.isEmpty() ? 'x' : body.charAt(0);
+      String url =
+          String.format(
+              "https://isdayoff.ru/%s?cc=%s", date.format(DateTimeFormatter.ISO_DATE), countryCode);
+
+      String body = restTemplate.getForObject(url, String.class);
+      if (body == null || body.isEmpty()) {
+        return new HolidayInfo(false, "Недоступно", "UNAVAILABLE", "Недоступно");
+      }
+
+      char code = body.trim().charAt(0);
       switch (code) {
         case '0':
-          return new HolidayInfo(false, "Рабочий день", "WORKING");
+          return new HolidayInfo(false, "Рабочий день", "WORKDAY", "Рабочий день");
         case '1':
-          return new HolidayInfo(true, "Праздничный/выходной", "HOLIDAY_OR_WEEKEND");
+          return new HolidayInfo(true, "Выходной", "HOLIDAY", getHolidayName(date));
         case '2':
-          return new HolidayInfo(true, "Сокращённый день (предпраздничный)", "PREHOLIDAY");
-        case '4':
-          return new HolidayInfo(false, "Рабочий день (особый режим)", "COVID_WORKING");
+          return new HolidayInfo(false, "Сокращённый день", "SHORTDAY", "Сокращённый день");
         default:
-          log.warn("isdayoff: unexpected code '{}' for {}", code, ymd);
-          return new HolidayInfo(false, "Неизвестно", "UNKNOWN");
+          return new HolidayInfo(false, "Недоступно", "UNAVAILABLE", "Недоступно");
       }
     } catch (Exception e) {
-      log.warn("isdayoff: request failed for {}: {}", ymd, e.toString());
-      return new HolidayInfo(false, "Недоступно", "UNAVAILABLE");
+      return new HolidayInfo(false, "Недоступно", "UNAVAILABLE", "Недоступно");
     }
   }
 
-  /** Короткая DTO внутри сервиса. */
-  @Getter
-  @AllArgsConstructor
-  public static class HolidayInfo {
-    private final boolean holiday;
-    private final String label;
-    private final String kind;
+  /** Оверлоад по-умолчанию (ru). */
+  public HolidayInfo getHolidayInfo(LocalDate date) {
+    return getHolidayInfo(date, "ru");
+  }
+
+  /** Возвращает название праздника по дате (локальный фолбэк). */
+  private String getHolidayName(LocalDate date) {
+    if (date.getMonthValue() == 1 && date.getDayOfMonth() == 1) {
+      return "Новый год";
+    }
+    if (date.getMonthValue() == 1 && date.getDayOfMonth() == 7) {
+      return "Рождество Христово";
+    }
+    if (date.getMonthValue() == 2 && date.getDayOfMonth() == 23) {
+      return "День защитника Отечества";
+    }
+    if (date.getMonthValue() == 3 && date.getDayOfMonth() == 8) {
+      return "Международный женский день";
+    }
+    if (date.getMonthValue() == 5 && date.getDayOfMonth() == 1) {
+      return "Праздник Весны и Труда";
+    }
+    if (date.getMonthValue() == 5 && date.getDayOfMonth() == 9) {
+      return "День Победы";
+    }
+    if (date.getMonthValue() == 6 && date.getDayOfMonth() == 12) {
+      return "День России";
+    }
+    if (date.getMonthValue() == 11 && date.getDayOfMonth() == 4) {
+      return "День народного единства";
+    }
+    return "Рабочий день";
+  }
+
+  /** DTO внутри сервиса. Требуются пробелы внутри { } для Checkstyle. */
+  public record HolidayInfo(boolean holiday, String label, String kind, String name) {
+    /* no-op */
   }
 }

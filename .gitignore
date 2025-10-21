@@ -25,3 +25,4 @@ out/
 backup_*/
 *.bak
 *.CURRENT_BACKUP.sql
+!gradle/wrapper/gradle-wrapper.jar
