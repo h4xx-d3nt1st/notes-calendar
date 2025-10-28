@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="ru" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Notes Calendar — UI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          boxShadow: { 'soft': '0 10px 30px rgba(0,0,0,.08)' },
+          animation: { fade: 'fade .2s ease-in-out' },
+          keyframes: { fade: { '0%':{opacity:0}, '100%':{opacity:1} } }
+        }
+      }
+    }
+  </script>
+  <style>
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,.7); }
+    .dark .glass { background: rgba(17,24,39,.6); }
+  </style>
+</head>
+<body class="h-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 text-slate-900 dark:text-slate-100">
+  <div class="min-h-full max-w-5xl mx-auto p-4 md:p-8 space-y-4">
+
+    <!-- HEADER -->
+    <header class="glass rounded-2xl p-4 md:p-6 shadow-soft flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-indigo-600 text-white grid place-items-center font-bold">NC</div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold">Notes Calendar</h1>
+          <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">Создавай, смотри и удаляй заметки по дням</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="openSwagger" class="text-xs md:text-sm px-3 py-2 rounded-lg border border-slate-300/60 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Swagger</button>
+        <button id="themeToggle" class="text-xs md:text-sm px-3 py-2 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900">🌙/☀️</button>
+      </div>
+    </header>
+
+    <!-- CONTROLS -->
+    <section class="glass rounded-2xl p-4 md:p-6 shadow-soft">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <div class="md:col-span-2">
+          <label class="block text-sm mb-1">Дата</label>
+          <input id="date" type="date" class="w-full px-3 py-2 rounded-lg bg-white/70 dark:bg-slate-800/70 border border-slate-300/60 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Код страны (isdayoff)</label>
+          <input id="cc" type="text" value="ru" maxlength="3" class="w-full px-3 py-2 rounded-lg bg-white/70 dark:bg-slate-800/70 border border-slate-300/60 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div class="flex items-end gap-2">
+          <button id="loadBtn" class="w-full px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">Загрузить</button>
+        </div>
+        <div class="flex items-end gap-2">
+          <button id="delDayBtn" class="w-full px-4 py-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700">Удалить день</button>
+        </div>
+      </div>
+
+      <!-- DAY STATUS -->
+      <div id="dayStatus" class="mt-4 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50"></div>
+    </section>
+
+    <!-- ADD NOTE -->
+    <section class="glass rounded-2xl p-4 md:p-6 shadow-soft">
+      <h2 class="font-semibold mb-2">Новая заметка</h2>
+      <div class="flex flex-col md:flex-row gap-2">
+        <input id="noteContent" type="text" placeholder="Текст заметки…" class="flex-1 px-3 py-2 rounded-lg bg-white/70 dark:bg-slate-800/70 border border-slate-300/60 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <button id="addBtn" class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Добавить</button>
+      </div>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Индекс в дне проставится автоматически.</p>
+    </section>
+
+    <!-- NOTES LIST -->
+    <section class="glass rounded-2xl p-2 md:p-4 shadow-soft">
+      <div class="flex items-center justify-between px-2">
+        <h2 class="font-semibold">Заметки</h2>
+        <span id="notesCount" class="text-sm text-slate-500 dark:text-slate-400"></span>
+      </div>
+      <div id="notesList" class="mt-2 grid gap-2"></div>
+    </section>
+  </div>
+
+  <!-- TOASTS -->
+  <div id="toasts" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
+
+  <!-- LOADER -->
+  <div id="loader" class="hidden fixed inset-0 z-40 grid place-items-center bg-black/20 dark:bg-black/30">
+    <div class="h-16 w-16 border-4 border-white/60 border-t-indigo-500 rounded-full animate-spin"></div>
+  </div>
+
+  <!-- CONFIRM MODAL -->
+  <div id="confirmWrap" class="hidden fixed inset-0 z-40">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="absolute inset-0 grid place-items-center p-4">
+      <div class="w-full max-w-md glass rounded-2xl p-6 shadow-soft animate-fade">
+        <h3 class="text-lg font-semibold mb-2">Подтверждение</h3>
+        <p id="confirmText" class="text-sm text-slate-600 dark:text-slate-300 mb-4"></p>
+        <div class="flex justify-end gap-2">
+          <button id="confirmNo" class="px-4 py-2 rounded-lg border border-slate-300/60 dark:border-slate-700">Отмена</button>
+          <button id="confirmYes" class="px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700">Удалить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== helpers =====
+    const $ = (id) => document.getElementById(id);
+    const show = (el) => el.classList.remove('hidden');
+    const hide = (el) => el.classList.add('hidden');
+
+    function toast(msg, ok=true) {
+      const t = document.createElement('div');
+      t.className = `px-4 py-3 rounded-xl text-sm shadow-soft ${ok?'bg-emerald-600 text-white':'bg-rose-600 text-white'}`;
+      t.textContent = msg;
+      $('toasts').appendChild(t);
+      setTimeout(()=> t.remove(), 2500);
+    }
+
+    function confirmDialog(text) {
+      return new Promise((resolve) => {
+        $('confirmText').textContent = text;
+        show($('confirmWrap'));
+        const onNo = () => { cleanup(); resolve(false); };
+        const onYes = () => { cleanup(); resolve(true); };
+        $('confirmNo').onclick = onNo;
+        $('confirmYes').onclick = onYes;
+        function cleanup(){
+          $('confirmNo').onclick = null;
+          $('confirmYes').onclick = null;
+          hide($('confirmWrap'));
+        }
+      });
+    }
+
+    function badge(kind, label) {
+      const map = { WORKDAY:'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-100',
+                    HOLIDAY:'bg-rose-200 text-rose-900 dark:bg-rose-900 dark:text-rose-100',
+                    SHORTDAY:'bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
+                    UNAVAILABLE:'bg-yellow-200 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-100' };
+      return `<span class="px-2 py-1 rounded-lg text-xs ${map[kind]||map.WORKDAY}">${label} (${kind})</span>`;
+    }
+
+    function escapeHtml(s){
+      return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
+    }
+
+    // ===== api =====
+    const api = {
+      getDayNotes: async (date, cc) => fetch(`/api/v1/notes/day-notes?date=${encodeURIComponent(date)}&cc=${encodeURIComponent(cc)}`).then(r=>r.json()),
+      createNote: async (date, content) => {
+        const r = await fetch('/api/v1/notes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({date, content}) });
+        if(!r.ok) throw new Error('Ошибка создания');
+        return r.json();
+      },
+      deleteOne: async (id) => {
+        const r = await fetch(`/api/v1/notes/${encodeURIComponent(id)}`, { method:'DELETE' });
+        if(r.status !== 204) throw new Error('Не удалось удалить');
+      },
+      deleteDay: async (date) => {
+        const r = await fetch(`/api/v1/notes/day?date=${encodeURIComponent(date)}`, { method:'DELETE' });
+        if(!r.ok) { throw new Error(`Ошибка ${r.status}`); }
+        // тело — число (строкой)
+        return Number(await r.text());
+      },
+    };
+
+    // ===== UI logic =====
+    let current = { date: null, cc: 'ru', day: null };
+
+    async function loadDay() {
+      if(!$('date').value) return toast('Выбери дату', false);
+      current.date = $('date').value;
+      current.cc = $('cc').value || 'ru';
+      show($('loader'));
+      try {
+        const day = await api.getDayNotes(current.date, current.cc);
+        current.day = day;
+        $('dayStatus').innerHTML = `
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-900 dark:bg-indigo-900 dark:text-indigo-100">${escapeHtml(current.date)} • ${escapeHtml((current.cc||'ru').toUpperCase())}</span>
+            ${badge(day.holidayKind, day.holidayLabel)}
+            <span class="text-sm text-slate-600 dark:text-slate-300">Праздник: ${escapeHtml(day.holidayName)}</span>
+          </div>`;
+        renderNotes(day.notes || []);
+        toast(`Загружено: ${current.date} (${current.cc})`, true);
+      } catch(e) {
+        toast('Ошибка загрузки: ' + e.message, false);
+      } finally {
+        hide($('loader'));
+      }
+    }
+
+    function renderNotes(notes){
+      const list = $('notesList');
+      $('notesCount').textContent = notes.length ? `Всего: ${notes.length}` : 'Нет заметок';
+      list.innerHTML = '';
+      notes.forEach(n => {
+        const card = document.createElement('div');
+        card.className = "rounded-xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 p-3 flex items-start justify-between gap-3";
+        card.innerHTML = `
+          <div class="min-w-0">
+            <div class="text-xs text-slate-500 dark:text-slate-400">#${n.indexInDay} • ID ${n.id}</div>
+            <div class="mt-1 break-words">${escapeHtml(n.content)}</div>
+          </div>
+          <div class="flex gap-2 shrink-0">
+            <button data-id="${n.id}" class="delOne px-3 py-1 rounded-lg bg-rose-600 text-white hover:bg-rose-700">Удалить</button>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+      document.querySelectorAll('.delOne').forEach(btn=>{
+        btn.onclick = async () => {
+          const id = btn.getAttribute('data-id');
+          if(!(await confirmDialog(`Удалить заметку ID ${id}?`))) return;
+          show($('loader'));
+          try { await api.deleteOne(id); toast(`Удалено #${id}`); await loadDay(); }
+          catch(e){ toast(e.message, false); }
+          finally { hide($('loader')); }
+        };
+      });
+    }
+
+    async function addNote(){
+      const content = $('noteContent').value.trim();
+      if(!current.date) return toast('Сначала выбери дату', false);
+      if(!content) return toast('Пустой текст', false);
+      show($('loader'));
+      try {
+        const res = await api.createNote(current.date, content);
+        $('noteContent').value = '';
+        toast(`Создано ID=${res.id} (index=${res.indexInDay})`);
+        await loadDay();
+      } catch(e){ toast(e.message, false); }
+      finally { hide($('loader')); }
+    }
+
+    async function deleteDay(){
+      if(!current.date) return toast('Сначала выбери дату', false);
+      if(!(await confirmDialog(`Удалить ВСЕ заметки за ${current.date}?`))) return;
+      show($('loader'));
+      try {
+        const count = await api.deleteDay(current.date);
+        toast(`Удалено: ${count}`);
+        await loadDay();
+      } catch(e){ toast(e.message, false); }
+      finally { hide($('loader')); }
+    }
+
+    // theme toggle
+    (function initTheme(){
+      const saved = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const dark = saved ? (saved==='dark') : prefersDark;
+      document.documentElement.classList.toggle('dark', dark);
+      $('themeToggle')?.addEventListener('click', ()=>{
+        const nowDark = !document.documentElement.classList.contains('dark');
+        document.documentElement.classList.toggle('dark', nowDark);
+        localStorage.setItem('theme', nowDark?'dark':'light');
+      });
+    })();
+
+    // init
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const today = new Date().toISOString().slice(0,10);
+      $('date').value = today;
+      $('openSwagger').onclick = () => window.open('/swagger-ui/index.html#/', '_blank');
+      $('loadBtn').onclick = loadDay;
+      20 20 101 12 61 79 80 81 98 701 33 100 204 250 395 398 399 400'date').addEventListener('change', loadDay);
+      20 20 101 12 61 79 80 81 98 701 33 100 204 250 395 398 399 400'cc').addEventListener('change', loadDay);
+      $('addBtn').onclick = addNote;
+      $('delDayBtn').onclick = deleteDay;
+      loadDay();
+    });
+  </script>
+</body>
+</html>
