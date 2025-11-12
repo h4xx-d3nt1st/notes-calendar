@@ -73,7 +73,7 @@ curl "http://localhost:8080/api/v1/notes/day-notes?date=2025-11-12"
 
 ---
 
-### 🐳 Вариант 2 — запуск через Docker Compose
+###  Вариант 2 — запуск через Docker Compose
 
 #### 1. Склонируйте репозиторий:
 ```bash
@@ -117,41 +117,155 @@ http://localhost:3000 (login: admin / admin)
 
 ---
 
-##  Проверка API (через curl / Postman)
+## Проверка API (через curl / Postman) — полный CRUD
 
-###  Создание заметки
+###  Сводная матрица CRUD
+
+| Действие | Метод | URL | Тело запроса | Ожидаемый код | Кратко |
+|-----------|--------|-----|---------------|----------------|--------|
+| Создать заметку | POST | /api/v1/notes | {"date":"YYYY-MM-DD","content":"..."} | 201 Created | Возвращает созданный объект |
+| Список за день | GET | /api/v1/notes/day-notes?date=YYYY-MM-DD | — | 200 OK / 404 Not Found | Возвращает статус дня + массив заметок |
+| Обновить заметку | PUT | /api/v1/notes/{id} | {"content":"..."} | 200 OK / 404 Not Found | Меняет текст заметки |
+| Удалить по id | DELETE | /api/v1/notes/{id} | — | 204 No Content / 404 Not Found | Физическое удаление |
+| Удалить день целиком | DELETE | /api/v1/notes/day?date=YYYY-MM-DD | — | 204 No Content | Сносит все заметки за дату |
+| Статус дня (IsDayOff) | GET | /api/v1/holiday?date=YYYY-MM-DD | — | 200 OK | WORKDAY/HOLIDAY/SHORTDAY |
+
+---
+
+###  Создание заметки (C — Create)
 ```bash
-curl -X POST http://localhost:8080/api/v1/notes   -H "Content-Type: application/json"   -d '{"date":"2025-11-12","content":"Проверка работы Notes Calendar"}'
+curl -X POST http://localhost:8080/api/v1/notes \
+  -H "Content-Type: application/json" \
+  -d '{"date":"2025-11-12","content":"Подготовить отчёт по курсовой"}'
+```
+Ожидаемый ответ (201):
+```json
+{
+  "id": 57,
+  "date": "2025-11-12",
+  "content": "Подготовить отчёт по курсовой",
+  "indexInDay": 1
+}
 ```
 
-###  Получение заметок за день
+---
+
+###  Получить заметки за дату (R — Read)
 ```bash
 curl "http://localhost:8080/api/v1/notes/day-notes?date=2025-11-12"
 ```
-
-Пример ответа:
+Ожидаемый ответ (200):
 ```json
 {
   "date": "2025-11-12",
   "holiday": false,
   "holidayKind": "WORKDAY",
+  "holidayLabel": "Рабочий день",
+  "holidayName": "Рабочий день",
   "notes": [
-    {"id": 56, "content": "Проверка работы Notes Calendar"}
+    { "id": 56, "date": "2025-11-12", "content": "Проверка метрик Prometheus", "indexInDay": 1 },
+    { "id": 57, "date": "2025-11-12", "content": "Подготовить отчёт по курсовой", "indexInDay": 2 }
   ]
 }
 ```
+Если за дату нет записей → **404 Not Found**.
 
-###  Обновление заметки
+---
+
+###  Обновить заметку (U — Update)
 ```bash
-curl -X PUT http://localhost:8080/api/v1/notes/56   -H "Content-Type: application/json"   -d '{"content":"Изменённая заметка"}'
+curl -X PUT http://localhost:8080/api/v1/notes/57 \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Подготовить отчёт (финальная версия)"}'
 ```
+Ожидаемый ответ (200):
+```json
+{
+  "id": 57,
+  "date": "2025-11-12",
+  "content": "Подготовить отчёт (финальная версия)",
+  "indexInDay": 2
+}
+```
+Если id не существует → **404 Not Found**.
 
-###  Удаление
+---
+
+###  Удалить заметку по id (D — Delete by ID)
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/notes/56
+curl -X DELETE http://localhost:8080/api/v1/notes/57 -i
+```
+Ожидаемый ответ: **204 No Content** (тело пустое).  
+Повторное удаление того же id вернёт **404 Not Found**.
+
+---
+
+###  Удалить все заметки за день (D — Delete by Date)
+```bash
+curl -X DELETE "http://localhost:8080/api/v1/notes/day?date=2025-11-12" -i
+```
+Ожидаемый ответ: **204 No Content**.  
+Проверка:
+```bash
+curl "http://localhost:8080/api/v1/notes/day-notes?date=2025-11-12" -i
+# ожидаем 404 Not Found
 ```
 
 ---
+
+###  Статус дня через IsDayOff (интеграция)
+```bash
+curl "http://localhost:8080/api/v1/holiday?date=2025-03-07"
+```
+Ответ (200):
+```json
+{ "status": "SHORTDAY" }
+```
+Если внешний сервис недоступен — fallback:  
+в логах:
+```
+WARN  HolidayService - API timeout, fallback=WORKDAY
+```
+в ответе — `"status": "WORKDAY"`.
+
+---
+
+###  Быстрый smoke-скрипт
+```bash
+# 1) создаём две заметки
+curl -s -X POST http://localhost:8080/api/v1/notes -H "Content-Type: application/json" \
+  -d '{"date":"2025-11-12","content":"Заметка A"}' | tee /tmp/noteA.json
+curl -s -X POST http://localhost:8080/api/v1/notes -H "Content-Type: application/json" \
+  -d '{"date":"2025-11-12","content":"Заметка B"}' | tee /tmp/noteB.json
+
+# 2) читаем список за день
+curl -s "http://localhost:8080/api/v1/notes/day-notes?date=2025-11-12"
+
+# 3) апдейтим первую (подставляем id из вывода /tmp/noteA.json)
+ID_A=$(jq -r '.id' /tmp/noteA.json)
+curl -s -X PUT http://localhost:8080/api/v1/notes/$ID_A \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Заметка A (обновлено)"}'
+
+# 4) удаляем вторую по id
+ID_B=$(jq -r '.id' /tmp/noteB.json)
+curl -s -X DELETE http://localhost:8080/api/v1/notes/$ID_B -i
+
+# 5) удаляем весь день
+curl -s -X DELETE "http://localhost:8080/api/v1/notes/day?date=2025-11-12" -i
+
+# 6) проверяем, что за день теперь 404
+curl -s "http://localhost:8080/api/v1/notes/day-notes?date=2025-11-12" -i
+```
+Если нет **jq**, вытащи id вручную из ответа POST.
+
+---
+
+###  Коды ошибок и валидация
+- **400 Bad Request** — пустой `content`, неверный формат `date`, отсутствует тело запроса;  
+- **404 Not Found** — нет заметки с таким id, или за запрошенную дату записей нет;  
+- **500 Internal Server Error** — сбой БД/сетевой таймаут (IsDayOff), детали в `logs/app.log`.
+
 
 ##  Основные эндпоинты
 
