@@ -132,6 +132,36 @@ http://localhost:3000 (login: admin / admin)
 
 ---
 
+###
+Красивый формат вывода (как в Postman)
+Чтобы получать структурированный и удобочитаемый JSON-вывод прямо в терминале, используйте jq:
+```bash
+curl -s "http://localhost:8080/api/v1/notes/day-notes?date=2025-03-08&cc=ru" | jq .
+```
+Пример результата:
+```json
+{
+  "date": "2025-03-08",
+  "holiday": true,
+  "holidayLabel": "Выходной",
+  "holidayKind": "HOLIDAY",
+  "holidayName": "Международный женский день",
+  "notes": [
+    {
+      "id": 53,
+      "date": "2025-03-08",
+      "content": "Заметка о празднике 8 Марта",
+      "indexInDay": 1
+    }
+  ]
+}
+```
+---
+Если у вас не установлен jq, установите его (MacOS):
+```bash
+brew install jq
+```
+---
 ###  Создание заметки (C — Create)
 ```bash
 curl -X POST http://localhost:8080/api/v1/notes \

@@ -1,5 +1,9 @@
 package com.example.notes;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.example.notes.entity.Note;
 import com.example.notes.repository.NoteRepository;
 import java.time.LocalDate;
@@ -14,9 +18,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -49,8 +50,8 @@ class DayNotesControllerDeleteTest {
     m.setContent("B");
     noteRepository.save(m);
 
-    mockMvc.perform(delete("/api/v1/notes/" + n.getId())
-            .contentType(MediaType.APPLICATION_JSON))
+    mockMvc
+        .perform(delete("/api/v1/notes/" + n.getId()).contentType(MediaType.APPLICATION_JSON))
         .andExpect(status().isNoContent());
   }
 
@@ -73,9 +74,9 @@ class DayNotesControllerDeleteTest {
     other.setContent("Other");
     noteRepository.save(other);
 
-    mockMvc.perform(delete("/api/v1/notes/day?date=" + d1)
-            .contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())                // было isNoContent()
-        .andExpect(content().string("2"));         // контроллер возвращает число удалённых записей
+    mockMvc
+        .perform(delete("/api/v1/notes/day?date=" + d1).contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk()) // было isNoContent()
+        .andExpect(content().string("2")); // контроллер возвращает число удалённых записей
   }
 }

@@ -23,57 +23,57 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class DayNotesController {
 
-    private final NoteRepository noteRepository;
-    private final HolidayService holidayService;
+  private final NoteRepository noteRepository;
+  private final HolidayService holidayService;
 
-    // GET /api/v1/notes/day-notes?date=YYYY-MM-DD[&cc=ru]
-    @GetMapping("/day-notes")
-    public NotesForDayResponse getNotesForDay(
-            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(value = "cc", required = false, defaultValue = "ru") String countryCode) {
+  // GET /api/v1/notes/day-notes?date=YYYY-MM-DD[&cc=ru]
+  @GetMapping("/day-notes")
+  public NotesForDayResponse getNotesForDay(
+      @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+      @RequestParam(value = "cc", required = false, defaultValue = "ru") String countryCode) {
 
-        List<Note> entities = noteRepository.findAllByDateOrderByIndexInDayAsc(date);
+    List<Note> entities = noteRepository.findAllByDateOrderByIndexInDayAsc(date);
 
-        List<NoteDto> notes =
-                entities.stream()
-                        .map(
-                                n -> {
-                                    NoteDto dto = new NoteDto();
-                                    dto.setId(n.getId());
-                                    dto.setDate(n.getDate());
-                                    dto.setContent(n.getContent());
-                                    dto.setIndexInDay(n.getIndexInDay());
-                                    return dto;
-                                })
-                        .collect(Collectors.toList());
+    List<NoteDto> notes =
+        entities.stream()
+            .map(
+                n -> {
+                  NoteDto dto = new NoteDto();
+                  dto.setId(n.getId());
+                  dto.setDate(n.getDate());
+                  dto.setContent(n.getContent());
+                  dto.setIndexInDay(n.getIndexInDay());
+                  return dto;
+                })
+            .collect(Collectors.toList());
 
-        HolidayInfo hi = holidayService.getHolidayInfo(date, countryCode);
+    HolidayInfo hi = holidayService.getHolidayInfo(date, countryCode);
 
-        return NotesForDayResponse.builder()
-                .date(date.toString())
-                .holiday(hi.holiday())
-                .holidayLabel(hi.label())
-                .holidayKind(hi.kind())
-                .holidayName(hi.name())
-                .notes(notes)
-                .build();
-    }
+    return NotesForDayResponse.builder()
+        .date(date.toString())
+        .holiday(hi.holiday())
+        .holidayLabel(hi.label())
+        .holidayKind(hi.kind())
+        .holidayName(hi.name())
+        .notes(notes)
+        .build();
+  }
 
-    // Старый эндпоинт для совместимости: всегда ru
-    // GET /api/v1/notes/day?date=YYYY-MM-DD
-    @Deprecated
-    @GetMapping("/day")
-    public NotesForDayResponse getNotesForDayCompat(
-            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return getNotesForDay(date, "ru");
-    }
+  // Старый эндпоинт для совместимости: всегда ru
+  // GET /api/v1/notes/day?date=YYYY-MM-DD
+  @Deprecated
+  @GetMapping("/day")
+  public NotesForDayResponse getNotesForDayCompat(
+      @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    return getNotesForDay(date, "ru");
+  }
 
-    // УДАЛИТЬ ВЕСЬ ДЕНЬ
-    // DELETE /api/v1/notes/day?date=YYYY-MM-DD
-    @DeleteMapping("/day")
-    public ResponseEntity<Long> deleteDay(
-            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        long deleted = noteRepository.deleteByDate(date);
-        return ResponseEntity.ok(deleted);
-    }
+  // УДАЛИТЬ ВЕСЬ ДЕНЬ
+  // DELETE /api/v1/notes/day?date=YYYY-MM-DD
+  @DeleteMapping("/day")
+  public ResponseEntity<Long> deleteDay(
+      @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    long deleted = noteRepository.deleteByDate(date);
+    return ResponseEntity.ok(deleted);
+  }
 }
