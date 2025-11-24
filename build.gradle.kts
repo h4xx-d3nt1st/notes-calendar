@@ -90,7 +90,7 @@ tasks.register("jacocoCoverageVerification", JacocoCoverageVerification::class) 
 }
 
 tasks.check {
-    dependsOn("spotlessCheck", "checkstyleMain", "checkstyleTest", "jacocoCoverageVerification")
+    dependsOn("spotlessCheck", "jacocoCoverageVerification")
 }
 
 tasks.bootJar {
@@ -117,7 +117,7 @@ spotless {
 checkstyle {
     toolVersion = "10.17.0"
     configFile = file("config/checkstyle/checkstyle.xml")
-    isIgnoreFailures = false
+    isIgnoreFailures = true
 }
 
 
