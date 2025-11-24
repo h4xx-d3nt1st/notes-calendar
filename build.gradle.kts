@@ -41,9 +41,6 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.apache.poi:poi-ooxml:5.2.5")
 
-    // IsDayOff (твоя локально опубликованная либа)
-    implementation("com.github.h4xx-d3nt1st:isdayoff:0.1.0")
-
     // Lombok
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")
